@@ -1,34 +1,43 @@
-'use strict';
+import { spy, stub } from 'sinon';
+import { use, expect as _expect } from 'chai';
+import sinonChai from 'sinon-chai';
+import chaiAsPromised from 'chai-as-promised';
+use(sinonChai);
+use(chaiAsPromised);
+const expect = _expect;
 
-const _sinon = require('sinon');
-const _chai = require('chai');
-_chai.use(require('sinon-chai'));
-_chai.use(require('chai-as-promised'));
-const expect = _chai.expect;
+import { getProperty as _dotPropGet } from 'dot-prop';
+import { testValues as _testValues } from '@vamship/test-utils';
+import { ArgError, SchemaError } from '@vamship/error-types';
 
-const _rewire = require('rewire');
-const _dotProp = require('dot-prop');
-const { testValues: _testValues } = require('@vamship/test-utils');
-const { ArgError, SchemaError } = require('@vamship/error-types').args;
+import { LambdaTestWrapper } from '../../src/lambda-test-wrapper.js';
+import esmock from 'esmock';
 
-const LambdaTestWrapper = require('../../src/lambda-test-wrapper');
-let InputValidator = null;
+// eslint-disable-next-line tsel/no-explicit-any
+let InputValidator: any | null = null;
 
 describe('InputValidator', () => {
-    function _createLambdaTestWrapper(functionName, handler, event, config) {
+    function _createLambdaTestWrapper(
+        functionName?: string,
+        // eslint-disable-next-line tsel/no-explicit-any
+        handler?: any,
+        event?: Record<string, unknown>,
+        config?: Record<string, unknown>,
+    ) {
         functionName = functionName || _testValues.getString('functionName');
-        handler = handler || _sinon.spy();
+        handler = handler || spy();
         event = event || {};
         config = config || {};
-        return new LambdaTestWrapper(functionName, handler, event, config);
+        return new LambdaTestWrapper(functionName, handler, event);
     }
 
-    function _createInputValidator(wrapper) {
+    function _createInputValidator(wrapper?: LambdaTestWrapper) {
         wrapper = wrapper || _createLambdaTestWrapper();
         return new InputValidator(wrapper);
     }
 
-    function _getType(value) {
+    // eslint-disable-next-line tsel/no-explicit-any
+    function _getType(value: any) {
         if (value === null) {
             return 'null';
         } else if (value === undefined) {
@@ -76,7 +85,7 @@ describe('InputValidator', () => {
             it('should return a promise when invoked', () => {
                 const validator = _createInputValidator();
                 const property = _testValues.getString('property');
-                const tester = _sinon.spy();
+                const tester = spy();
 
                 const ret = invoke(validator, property, tester);
 
@@ -88,7 +97,7 @@ describe('InputValidator', () => {
                 const error = new Error('something went wrong!');
                 const validator = _createInputValidator();
                 const property = _testValues.getString('property');
-                const tester = _sinon.stub();
+                const tester = stub();
                 tester.onCall(0).returns('');
                 tester.onCall(1).throws(error);
                 tester.onCall(2).throws(error);
@@ -100,7 +109,7 @@ describe('InputValidator', () => {
             it('should resolve the promise if all tester calls complete successfully', (done) => {
                 const validator = _createInputValidator();
                 const property = _testValues.getString('property');
-                const tester = _sinon.stub();
+                const tester = stub();
 
                 const promise = invoke(validator, property, tester);
                 expect(promise).to.be.fulfilled.and.notify(done);
@@ -110,7 +119,7 @@ describe('InputValidator', () => {
                 const error = new Error('something went wrong!');
                 const validator = _createInputValidator();
                 const property = _testValues.getString('property');
-                const tester = _sinon.stub();
+                const tester = stub();
                 tester.onCall(0).returns('');
                 tester.onCall(1).rejects(error);
                 tester.onCall(2).rejects(error);
@@ -121,8 +130,9 @@ describe('InputValidator', () => {
         };
     }
 
-    beforeEach(() => {
-        InputValidator = _rewire('../../src/input-validator');
+    beforeEach(async () => {
+        const module = await esmock('../../src/input-validator');
+        InputValidator = module.InputValidator;
     });
 
     describe('ctor()', () => {
@@ -141,7 +151,7 @@ describe('InputValidator', () => {
 
         it('should expose the expected methods and properties', () => {
             const functionName = _testValues.getString('functionName');
-            const handler = _sinon.spy();
+            const handler = spy();
             const wrapper = new LambdaTestWrapper(functionName, handler);
             const validator = new InputValidator(wrapper);
 
@@ -180,7 +190,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(fullProperty, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredString(fullProperty, tester);
 
             expect(promise)
@@ -209,7 +219,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredString(property, tester);
 
             expect(promise)
@@ -217,7 +227,7 @@ describe('InputValidator', () => {
                     expect(tester.callCount).to.equal(EXPECTED_TYPES.length);
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -236,21 +246,21 @@ describe('InputValidator', () => {
 
             const extras = [_testValues.getString('extra1'), '', {}];
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredString(
                 property,
                 tester,
-                extras
+                extras,
             );
 
             expect(promise)
                 .to.be.fulfilled.then(() => {
                     expect(tester.callCount).to.equal(
-                        EXPECTED_TYPES.length + extras.length
+                        EXPECTED_TYPES.length + extras.length,
                     );
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -282,7 +292,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(fullProperty, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalString(fullProperty, tester);
 
             expect(promise)
@@ -311,7 +321,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalString(property, tester);
 
             expect(promise)
@@ -319,7 +329,7 @@ describe('InputValidator', () => {
                     expect(tester.callCount).to.equal(EXPECTED_TYPES.length);
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -338,21 +348,21 @@ describe('InputValidator', () => {
 
             const extras = [_testValues.getString('extra1'), '', {}];
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalString(
                 property,
                 tester,
-                extras
+                extras,
             );
 
             expect(promise)
                 .to.be.fulfilled.then(() => {
                     expect(tester.callCount).to.equal(
-                        EXPECTED_TYPES.length + extras.length
+                        EXPECTED_TYPES.length + extras.length,
                     );
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -382,7 +392,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(fullProperty, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredNumber(fullProperty, tester);
 
             expect(promise)
@@ -411,7 +421,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredNumber(property, tester);
 
             expect(promise)
@@ -419,7 +429,7 @@ describe('InputValidator', () => {
                     expect(tester.callCount).to.equal(EXPECTED_TYPES.length);
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -438,21 +448,21 @@ describe('InputValidator', () => {
 
             const extras = [_testValues.getString('extra1'), -1, -5];
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredNumber(
                 property,
                 tester,
-                extras
+                extras,
             );
 
             expect(promise)
                 .to.be.fulfilled.then(() => {
                     expect(tester.callCount).to.equal(
-                        EXPECTED_TYPES.length + extras.length
+                        EXPECTED_TYPES.length + extras.length,
                     );
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -484,7 +494,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(fullProperty, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalNumber(fullProperty, tester);
 
             expect(promise)
@@ -513,7 +523,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalNumber(property, tester);
 
             expect(promise)
@@ -521,7 +531,7 @@ describe('InputValidator', () => {
                     expect(tester.callCount).to.equal(EXPECTED_TYPES.length);
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -540,21 +550,21 @@ describe('InputValidator', () => {
 
             const extras = [_testValues.getString('extra1'), -1, -5];
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalNumber(
                 property,
                 tester,
-                extras
+                extras,
             );
 
             expect(promise)
                 .to.be.fulfilled.then(() => {
                     expect(tester.callCount).to.equal(
-                        EXPECTED_TYPES.length + extras.length
+                        EXPECTED_TYPES.length + extras.length,
                     );
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -584,10 +594,10 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(fullProperty, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredBoolean(
                 fullProperty,
-                tester
+                tester,
             );
 
             expect(promise)
@@ -616,7 +626,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredBoolean(property, tester);
 
             expect(promise)
@@ -624,7 +634,7 @@ describe('InputValidator', () => {
                     expect(tester.callCount).to.equal(EXPECTED_TYPES.length);
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -643,21 +653,21 @@ describe('InputValidator', () => {
 
             const extras = [_testValues.getString('extra1'), null, 123];
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredBoolean(
                 property,
                 tester,
-                extras
+                extras,
             );
 
             expect(promise)
                 .to.be.fulfilled.then(() => {
                     expect(tester.callCount).to.equal(
-                        EXPECTED_TYPES.length + extras.length
+                        EXPECTED_TYPES.length + extras.length,
                     );
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -689,10 +699,10 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(fullProperty, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalBoolean(
                 fullProperty,
-                tester
+                tester,
             );
 
             expect(promise)
@@ -721,7 +731,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalBoolean(property, tester);
 
             expect(promise)
@@ -729,7 +739,7 @@ describe('InputValidator', () => {
                     expect(tester.callCount).to.equal(EXPECTED_TYPES.length);
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -748,21 +758,21 @@ describe('InputValidator', () => {
 
             const extras = [_testValues.getString('extra1'), null, 123];
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalBoolean(
                 property,
                 tester,
-                extras
+                extras,
             );
 
             expect(promise)
                 .to.be.fulfilled.then(() => {
                     expect(tester.callCount).to.equal(
-                        EXPECTED_TYPES.length + extras.length
+                        EXPECTED_TYPES.length + extras.length,
                     );
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -792,7 +802,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(fullProperty, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredObject(fullProperty, tester);
 
             expect(promise)
@@ -821,7 +831,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredObject(property, tester);
 
             expect(promise)
@@ -829,7 +839,7 @@ describe('InputValidator', () => {
                     expect(tester.callCount).to.equal(EXPECTED_TYPES.length);
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -846,23 +856,23 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const extras = [_testValues.getString('extra1'), new Array(), {}];
+            const extras = [_testValues.getString('extra1'), [], {}];
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredObject(
                 property,
                 tester,
-                extras
+                extras,
             );
 
             expect(promise)
                 .to.be.fulfilled.then(() => {
                     expect(tester.callCount).to.equal(
-                        EXPECTED_TYPES.length + extras.length
+                        EXPECTED_TYPES.length + extras.length,
                     );
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -894,7 +904,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(fullProperty, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalObject(fullProperty, tester);
 
             expect(promise)
@@ -923,7 +933,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalObject(property, tester);
 
             expect(promise)
@@ -931,7 +941,7 @@ describe('InputValidator', () => {
                     expect(tester.callCount).to.equal(EXPECTED_TYPES.length);
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -948,23 +958,23 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const extras = [_testValues.getString('extra1'), new Array(), {}];
+            const extras = [_testValues.getString('extra1'), [], {}];
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalObject(
                 property,
                 tester,
-                extras
+                extras,
             );
 
             expect(promise)
                 .to.be.fulfilled.then(() => {
                     expect(tester.callCount).to.equal(
-                        EXPECTED_TYPES.length + extras.length
+                        EXPECTED_TYPES.length + extras.length,
                     );
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -994,7 +1004,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(fullProperty, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredArray(fullProperty, tester);
 
             expect(promise)
@@ -1023,7 +1033,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredArray(property, tester);
 
             expect(promise)
@@ -1031,7 +1041,7 @@ describe('InputValidator', () => {
                     expect(tester.callCount).to.equal(EXPECTED_TYPES.length);
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -1048,23 +1058,23 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const extras = [_testValues.getString('extra1'), new Array(), {}];
+            const extras = [_testValues.getString('extra1'), [], {}];
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkRequiredArray(
                 property,
                 tester,
-                extras
+                extras,
             );
 
             expect(promise)
                 .to.be.fulfilled.then(() => {
                     expect(tester.callCount).to.equal(
-                        EXPECTED_TYPES.length + extras.length
+                        EXPECTED_TYPES.length + extras.length,
                     );
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -1096,7 +1106,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(fullProperty, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalArray(fullProperty, tester);
 
             expect(promise)
@@ -1125,7 +1135,7 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalArray(property, tester);
 
             expect(promise)
@@ -1133,7 +1143,7 @@ describe('InputValidator', () => {
                     expect(tester.callCount).to.equal(EXPECTED_TYPES.length);
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);
@@ -1150,23 +1160,23 @@ describe('InputValidator', () => {
             initialWrapper.setEventProperty(property, value);
             const validator = _createInputValidator(initialWrapper);
 
-            const extras = [_testValues.getString('extra1'), new Array(), {}];
+            const extras = [_testValues.getString('extra1'), [], {}];
 
-            const tester = _sinon.spy();
+            const tester = spy();
             const promise = validator.checkOptionalArray(
                 property,
                 tester,
-                extras
+                extras,
             );
 
             expect(promise)
                 .to.be.fulfilled.then(() => {
                     expect(tester.callCount).to.equal(
-                        EXPECTED_TYPES.length + extras.length
+                        EXPECTED_TYPES.length + extras.length,
                     );
                     const values = tester.args.map((args) => {
                         const [wrapper] = args;
-                        return _dotProp.get(wrapper.event, property);
+                        return _dotPropGet(wrapper.event, property);
                     });
 
                     expect(values).to.not.contain(value);

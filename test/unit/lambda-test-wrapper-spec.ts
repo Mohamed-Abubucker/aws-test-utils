@@ -1,15 +1,14 @@
-'use strict';
+import { spy, stub } from 'sinon';
+import { use, expect as _expect } from 'chai';
+import sinonChai from 'sinon-chai';
+import chaiAsPromised from 'chai-as-promised';
+use(sinonChai);
+use(chaiAsPromised);
+const expect = _expect;
 
-const _sinon = require('sinon');
-const _chai = require('chai');
-_chai.use(require('sinon-chai'));
-_chai.use(require('chai-as-promised'));
-const expect = _chai.expect;
-
-const _rewire = require('rewire');
-
-const { testValues: _testValues } = require('@vamship/test-utils');
-const { ArgError } = require('@vamship/error-types').args;
+import { testValues as _testValues } from '@vamship/test-utils';
+import { ArgError } from '@vamship/error-types';
+import esmock from 'esmock';
 
 let LambdaTestWrapper = null;
 
@@ -26,7 +25,7 @@ describe('LambdaTestWrapper', () => {
     ];
     function _createLambdaTestWrapper(functionName, handler, event) {
         functionName = functionName || _testValues.getString('functionName');
-        handler = handler || _sinon.spy();
+        handler = handler || spy();
         event = event || {};
         return new LambdaTestWrapper(functionName, handler, event);
     }
@@ -59,8 +58,9 @@ describe('LambdaTestWrapper', () => {
         };
     }
 
-    beforeEach(() => {
-        LambdaTestWrapper = _rewire('../../src/lambda-test-wrapper');
+    beforeEach(async () => {
+        const module = await esmock('../../src/lambda-test-wrapper.js');
+        LambdaTestWrapper = module.LambdaTestWrapper;
     });
 
     describe('ctor()', () => {
@@ -91,7 +91,7 @@ describe('LambdaTestWrapper', () => {
 
         it('should return an object with the expected properties and methods', () => {
             const functionName = _testValues.getString('functionName');
-            const handler = _sinon.spy();
+            const handler = spy();
             const wrapper = new LambdaTestWrapper(functionName, handler);
 
             expect(wrapper).to.be.an('object');
@@ -116,7 +116,7 @@ describe('LambdaTestWrapper', () => {
             expect(context.memoryLimitInMB).to.equal(128);
             expect(context.awsRequestId).to.be.a('string').and.not.to.be.empty;
             expect(context.logGroupName).to.equal(
-                `/aws/lambda/${functionName}`
+                `/aws/lambda/${functionName}`,
             );
             expect(context.logStreamName).to.be.a('string').and.not.to.be.empty;
 
@@ -133,7 +133,7 @@ describe('LambdaTestWrapper', () => {
 
         it('should use the input object to initialize the event if one was specified', () => {
             const functionName = _testValues.getString('functionName');
-            const handler = _sinon.spy();
+            const handler = spy();
             const event = _generateObject();
             const wrapper = new LambdaTestWrapper(functionName, handler, event);
 
@@ -434,7 +434,7 @@ describe('LambdaTestWrapper', () => {
         });
 
         it('should invoke the handler with the correct parameters', () => {
-            const handler = _sinon.spy();
+            const handler = spy();
             const expectedAlias = _testValues.getString('alias');
             const wrapper = _createLambdaTestWrapper(undefined, handler);
 
@@ -460,7 +460,7 @@ describe('LambdaTestWrapper', () => {
         });
 
         it('should set a default value for the alias if an alias is not defined', () => {
-            const handler = _sinon.spy();
+            const handler = spy();
             const wrapper = _createLambdaTestWrapper(undefined, handler);
 
             wrapper.removeAlias();
@@ -475,7 +475,7 @@ describe('LambdaTestWrapper', () => {
         });
 
         it('should set a default value for the alias if the alias is set to $LATEST', () => {
-            const handler = _sinon.spy();
+            const handler = spy();
             const wrapper = _createLambdaTestWrapper(undefined, handler);
 
             wrapper.setAlias('$LATEST');
@@ -491,7 +491,7 @@ describe('LambdaTestWrapper', () => {
 
         it('should reject the promise if the handler throws an error', (done) => {
             const error = new Error('something went wrong!');
-            const handler = _sinon.stub().throws(error);
+            const handler = stub().throws(error);
             const wrapper = _createLambdaTestWrapper(undefined, handler);
 
             const promise = wrapper.invoke();
@@ -501,7 +501,7 @@ describe('LambdaTestWrapper', () => {
 
         it('should resolve the promise if the handler completes successfully', (done) => {
             const data = _generateObject();
-            const handler = _sinon.stub().returns(data);
+            const handler = stub().returns(data);
             const wrapper = _createLambdaTestWrapper(undefined, handler);
 
             const promise = wrapper.invoke();
@@ -515,7 +515,7 @@ describe('LambdaTestWrapper', () => {
 
         it('should reject the promise if the handler returns a rejected promise', (done) => {
             const error = new Error('something went wrong!');
-            const handler = _sinon.stub().rejects(error);
+            const handler = stub().rejects(error);
             const wrapper = _createLambdaTestWrapper(undefined, handler);
 
             const promise = wrapper.invoke();
@@ -525,7 +525,7 @@ describe('LambdaTestWrapper', () => {
 
         it('should resolve the promise if the handler returs a resolved promise', (done) => {
             const data = _generateObject();
-            const handler = _sinon.stub().resolves(data);
+            const handler = stub().resolves(data);
             const wrapper = _createLambdaTestWrapper(undefined, handler);
 
             const promise = wrapper.invoke();

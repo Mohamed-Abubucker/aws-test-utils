@@ -1,10 +1,11 @@
-'use strict';
+import bluebird from 'bluebird';
+import { argValidator as _argValidator } from '@vamship/arg-utils';
+import { testValues as _testValues } from '@vamship/test-utils';
+import { SchemaError } from '@vamship/error-types';
+import { LambdaTestWrapper } from './lambda-test-wrapper.js';
 
-const Promise = require('bluebird').Promise;
-const { argValidator: _argValidator } = require('@vamship/arg-utils');
-const { testValues: _testValues } = require('@vamship/test-utils');
-const { SchemaError } = require('@vamship/error-types').args;
-const LambdaTestWrapper = require('./lambda-test-wrapper');
+const { Promise } = bluebird;
+// Assuming that SchemaError is a named export under 'args'
 
 /**
  * Provides methods that generate input validation test scenarios for lambda
@@ -15,7 +16,8 @@ const LambdaTestWrapper = require('./lambda-test-wrapper');
  * Each test generates multiple inputs, invoking tests for each input. The
  * promises from each test is combined into a single promise, which is returned.
  */
-class InputValidator {
+export class InputValidator {
+    _wrapper: LambdaTestWrapper;
     /**
      * A function that performs assertion checks on the lambda for a specific
      * set of inputs. The callback function is expected to perform the necessary
@@ -43,14 +45,14 @@ class InputValidator {
      *        this object will be selectively replaced with failing values
      *        during tests.
      */
-    constructor(wrapper) {
+    constructor(wrapper: unknown) {
         _argValidator.checkInstance(
             wrapper,
             LambdaTestWrapper,
-            'Invalid test wrapper (arg #1)'
+            'Invalid test wrapper (arg #1)',
         );
 
-        this._wrapper = wrapper;
+        this._wrapper = wrapper as LambdaTestWrapper;
     }
 
     /**
@@ -66,11 +68,20 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    _runChecks(property, inputs, tester) {
+    _runChecks(
+        property: string,
+        inputs: Iterable<unknown> | PromiseLike<Iterable<unknown>>,
+        tester: (
+            arg0: LambdaTestWrapper,
+            arg1: typeof SchemaError,
+            arg2: RegExp,
+            // eslint-disable-next-line tsel/no-explicit-any
+        ) => any,
+    ) {
         const tokens = property.split('.');
         const propertyName = tokens[tokens.length - 1];
         const message = new RegExp(
-            `Schema validation failed. Details: \\[.*${propertyName}.*\\]`
+            `Schema validation failed. Details: \\[.*${propertyName}.*\\]`,
         );
 
         return Promise.map(inputs, (value) => {
@@ -93,7 +104,8 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    checkRequiredString(property, tester, extras) {
+    // eslint-disable-next-line tsel/no-explicit-any
+    checkRequiredString(property: string, tester: any, extras?: unknown[]) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
         _argValidator.checkFunction(tester, 'Invalid tester (arg #1)');
         if (!_argValidator.checkArray(extras)) {
@@ -117,7 +129,16 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    checkOptionalString(property, tester, extras) {
+    checkOptionalString(
+        property: string,
+        tester: (
+            arg0: LambdaTestWrapper,
+            arg1: typeof SchemaError,
+            arg2: RegExp,
+            // eslint-disable-next-line tsel/no-explicit-any
+        ) => any,
+        extras?: unknown[],
+    ) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
         _argValidator.checkFunction(tester, 'Invalid tester (arg #1)');
         if (!_argValidator.checkArray(extras)) {
@@ -142,7 +163,16 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    checkRequiredNumber(property, tester, extras) {
+    checkRequiredNumber(
+        property: string,
+        tester: (
+            arg0: LambdaTestWrapper,
+            arg1: typeof SchemaError,
+            arg2: RegExp,
+            // eslint-disable-next-line tsel/no-explicit-any
+        ) => any,
+        extras?: unknown[],
+    ) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
         _argValidator.checkFunction(tester, 'Invalid tester (arg #1)');
         if (!_argValidator.checkArray(extras)) {
@@ -166,7 +196,16 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    checkOptionalNumber(property, tester, extras) {
+    checkOptionalNumber(
+        property: string,
+        tester: (
+            arg0: LambdaTestWrapper,
+            arg1: typeof SchemaError,
+            arg2: RegExp,
+            // eslint-disable-next-line tsel/no-explicit-any
+        ) => any,
+        extras?: unknown[],
+    ) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
         _argValidator.checkFunction(tester, 'Invalid tester (arg #1)');
         if (!_argValidator.checkArray(extras)) {
@@ -191,7 +230,16 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    checkRequiredBoolean(property, tester, extras) {
+    checkRequiredBoolean(
+        property: string,
+        tester: (
+            arg0: LambdaTestWrapper,
+            arg1: typeof SchemaError,
+            arg2: RegExp,
+            // eslint-disable-next-line tsel/no-explicit-any
+        ) => any,
+        extras?: unknown[],
+    ) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
         _argValidator.checkFunction(tester, 'Invalid tester (arg #1)');
         if (!_argValidator.checkArray(extras)) {
@@ -215,7 +263,16 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    checkOptionalBoolean(property, tester, extras) {
+    checkOptionalBoolean(
+        property: string,
+        tester: (
+            arg0: LambdaTestWrapper,
+            arg1: typeof SchemaError,
+            arg2: RegExp,
+            // eslint-disable-next-line tsel/no-explicit-any
+        ) => any,
+        extras?: unknown[],
+    ) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
         _argValidator.checkFunction(tester, 'Invalid tester (arg #1)');
         if (!_argValidator.checkArray(extras)) {
@@ -240,7 +297,16 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    checkRequiredObject(property, tester, extras) {
+    checkRequiredObject(
+        property: string,
+        tester: (
+            arg0: LambdaTestWrapper,
+            arg1: typeof SchemaError,
+            arg2: RegExp,
+            // eslint-disable-next-line tsel/no-explicit-any
+        ) => any,
+        extras?: unknown[],
+    ) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
         _argValidator.checkFunction(tester, 'Invalid tester (arg #1)');
         if (!_argValidator.checkArray(extras)) {
@@ -264,7 +330,16 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    checkOptionalObject(property, tester, extras) {
+    checkOptionalObject(
+        property: string,
+        tester: (
+            arg0: LambdaTestWrapper,
+            arg1: typeof SchemaError,
+            arg2: RegExp,
+            // eslint-disable-next-line tsel/no-explicit-any
+        ) => any,
+        extras?: unknown[],
+    ) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
         _argValidator.checkFunction(tester, 'Invalid tester (arg #1)');
         if (!_argValidator.checkArray(extras)) {
@@ -289,7 +364,16 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    checkRequiredArray(property, tester, extras) {
+    checkRequiredArray(
+        property: string,
+        tester: (
+            arg0: LambdaTestWrapper,
+            arg1: typeof SchemaError,
+            arg2: RegExp,
+            // eslint-disable-next-line tsel/no-explicit-any
+        ) => any,
+        extras?: unknown[],
+    ) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
         _argValidator.checkFunction(tester, 'Invalid tester (arg #1)');
         if (!_argValidator.checkArray(extras)) {
@@ -313,7 +397,16 @@ class InputValidator {
      * @return {Promise} A promise that will be resolved/rejected based on the
      *         outcome of all test cases.
      */
-    checkOptionalArray(property, tester, extras) {
+    checkOptionalArray(
+        property: string,
+        tester: (
+            arg0: LambdaTestWrapper,
+            arg1: typeof SchemaError,
+            arg2: RegExp,
+            // eslint-disable-next-line tsel/no-explicit-any
+        ) => any,
+        extras?: unknown[],
+    ) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
         _argValidator.checkFunction(tester, 'Invalid tester (arg #1)');
         if (!_argValidator.checkArray(extras)) {
@@ -326,5 +419,3 @@ class InputValidator {
         return this._runChecks(property, inputs, tester);
     }
 }
-
-module.exports = InputValidator;

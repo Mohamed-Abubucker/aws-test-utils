@@ -1,10 +1,8 @@
-'use strict';
-
-const _sinon = require('sinon');
-const _dotProp = require('dot-prop');
-const _clone = require('clone');
-const { testValues: _testValues, ObjectMock } = require('@vamship/test-utils');
-const { argValidator: _argValidator } = require('@vamship/arg-utils');
+import _sinon from 'sinon';
+import { setProperty as _dotPropSet } from 'dot-prop';
+import _clone from 'clone';
+import { testValues as _testValues, ObjectMock } from '@vamship/test-utils';
+import { argValidator as _argValidator } from '@vamship/arg-utils';
 const LOG_METHODS = [
     'trace',
     'debug',
@@ -15,14 +13,34 @@ const LOG_METHODS = [
     'silent',
     'child',
 ];
-const Promise = require('bluebird').Promise;
+import bluebird from 'bluebird';
 const DEFAULT_ALIAS = 'default';
 
+const { Promise } = bluebird;
 /**
  * A testing wrapper for lambda functions specifically designed for handlers
  * that work with @vamship/aws-lambda
  */
-class LambdaTestWrapper {
+export class LambdaTestWrapper {
+    // eslint-disable-next-line tsel/no-explicit-any
+    _functionName: any;
+    // eslint-disable-next-line tsel/no-explicit-any
+    _handler: any;
+    // eslint-disable-next-line tsel/no-explicit-any
+    _event: any;
+    // eslint-disable-next-line tsel/no-explicit-any
+    _context: {
+        // eslint-disable-next-line tsel/no-explicit-any
+        getRemainingTimeInMillis: any;
+        callbackWaitsForEmptyEventLoop: boolean;
+        // eslint-disable-next-line tsel/no-explicit-any
+        functionName: any;
+        invokedFunctionArn: string;
+        memoryLimitInMB: number;
+        awsRequestId: string;
+        logGroupName: string;
+        logStreamName: string;
+    };
     /**
      * A function that contains the core execution logic of the lambda function.
      * This function receives the input and context from the AWS lambda, along
@@ -90,11 +108,16 @@ class LambdaTestWrapper {
      * @param {Object} [event={}] An optional event object that represents the
      *        input to the lambda function.
      */
-    constructor(functionName, handler, event) {
+    constructor(
+        functionName: string,
+        // eslint-disable-next-line tsel/no-explicit-any
+        handler: _sinon.SinonSpy<any[], any>,
+        event: unknown,
+    ) {
         _argValidator.checkString(
             functionName,
             1,
-            'Invalid functionName (arg #1)'
+            'Invalid functionName (arg #1)',
         );
         _argValidator.checkFunction(handler, 'Invalid handler (arg #2)');
         if (!_argValidator.checkObject(event)) {
@@ -127,7 +150,7 @@ class LambdaTestWrapper {
      *        made.
      * @param {String} value The token value to replace.
      */
-    _replaceArnToken(index, value) {
+    _replaceArnToken(index: number, value: string) {
         const { invokedFunctionArn } = this._context;
         const tokens = invokedFunctionArn.split(':');
         tokens[index] = value;
@@ -184,9 +207,9 @@ class LambdaTestWrapper {
      * @return {LambdaTestWrapper} A reference to the wrapper object, enabling
      *         object chaining.
      */
-    setEventProperty(property, value) {
+    setEventProperty(property: string, value: unknown) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
-        _dotProp.set(this._event, property, value);
+        _dotPropSet(this._event, property, value);
 
         return this;
     }
@@ -208,9 +231,9 @@ class LambdaTestWrapper {
      * @return {LambdaTestWrapper} A reference to the wrapper object, enabling
      *         object chaining.
      */
-    setContextProperty(property, value) {
+    setContextProperty(property: string, value: unknown) {
         _argValidator.checkString(property, 1, 'Invalid property (arg #1)');
-        _dotProp.set(this._context, property, value);
+        _dotPropSet(this._context, property, value);
 
         return this;
     }
@@ -242,7 +265,7 @@ class LambdaTestWrapper {
      * @return {LambdaTestWrapper} A reference to the wrapper object, enabling
      *         object chaining.
      */
-    setAlias(alias) {
+    setAlias(alias: string) {
         _argValidator.checkString(alias, 1, 'Invalid alias (arg #1)');
         this._replaceArnToken(7, alias);
         return this;
@@ -258,7 +281,7 @@ class LambdaTestWrapper {
      * @return {LambdaTestWrapper} A reference to the wrapper object, enabling
      *         object chaining.
      */
-    setRegion(region) {
+    setRegion(region: string) {
         _argValidator.checkString(region, 1, 'Invalid region (arg #1)');
         this._replaceArnToken(3, region);
         return this;
@@ -274,7 +297,7 @@ class LambdaTestWrapper {
      * @return {LambdaTestWrapper} A reference to the wrapper object, enabling
      *         object chaining.
      */
-    setAccountId(region) {
+    setAccountId(region: string) {
         _argValidator.checkString(region, 1, 'Invalid accountId (arg #1)');
         this._replaceArnToken(4, region);
         return this;
@@ -291,7 +314,7 @@ class LambdaTestWrapper {
         return new LambdaTestWrapper(
             this._functionName,
             this._handler,
-            this._event
+            this._event,
         );
     }
 
@@ -303,7 +326,8 @@ class LambdaTestWrapper {
      *         the outcome of handler execution.
      */
     invoke() {
-        const logger = LOG_METHODS.reduce((result, method) => {
+        // eslint-disable-next-line tsel/no-explicit-any
+        const logger = LOG_METHODS.reduce((result: any, method: string) => {
             result[method] = _sinon.spy();
             return result;
         }, new ObjectMock());
@@ -321,5 +345,3 @@ class LambdaTestWrapper {
         });
     }
 }
-
-module.exports = LambdaTestWrapper;
